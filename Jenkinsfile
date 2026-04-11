@@ -6,7 +6,7 @@ pipeline {
         AWS_ACCOUNT_ID = '438987840260'
         ECR_REPO = 'tomcat-app'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        JFROG_URL = 'http://16.171.142.42:8081/artifactory'
+        JFROG_URL = 'http://56.228.33.195:8081/artifactory'
     }
 
     stages {
