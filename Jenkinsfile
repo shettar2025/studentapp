@@ -31,6 +31,13 @@ pipeline {
             }
         }
 
+        stage('Build & Deploy') {
+            steps {
+                configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+                    sh 'mvn clean deploy -s $MAVEN_SETTINGS'
+                }
+            }
+     
         stage('Upload to JFrog') {
             steps {
                 withCredentials([usernamePassword(
