@@ -75,8 +75,8 @@ pipeline {
                             sudo /opt/tomcat/tomcat11/bin/shutdown.sh || echo 'Tomcat may already be stopped'
 
                             echo "Removing old WAR..."
-                            sudo rm -f /opt/tomcat/tomcat11/webapps/${artifactId}.war
-
+                            rm -rf webapps/studentapp
+                            
                             echo "Deploying new WAR to Tomcat webapps..."
                             sudo cp /tmp/\$WAR_NAME /opt/tomcat/tomcat11/webapps/${artifactId}.war
 
