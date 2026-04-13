@@ -8,8 +8,8 @@ pipeline {
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
-                       url: 'https://github.com/SharathKumar-Project/devops-sampleweb.git',
-                       credentialsId: 'github_token'
+                       url: 'https://github.com/shettar2025/studentapp.git',
+                       credentialsId: 'git-creds'
                     ]]
                 ])
             }
@@ -39,14 +39,14 @@ pipeline {
      stage('Download Latest SNAPSHOT WAR and Deploy') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'jfrog_pass', 
-                    usernameVariable: 'ART_USER', 
-                    passwordVariable: 'ART_PASS'
+                    credentialsId: 'jfrog-creds', 
+                    usernameVariable: 'JFROG_USER', 
+                    passwordVariable: 'JFROG_PASS'
                 )]) {
                     script {
                         def baseUrl = "http://13.48.147.62:8081/artifactory/libs-snapshot-local"
-                        def groupPath = "com/example/Studentapp"
-                        def artifactId = "Studentapp"
+                        def groupPath = "com/example/studentapp"
+                        def artifactId = "studentapp"
                         def version = "1.2-SNAPSHOT"
                         def metadataUrl = "${baseUrl}/${groupPath}/${version}/maven-metadata.xml"
 
@@ -54,7 +54,7 @@ pipeline {
                             set -e
 
                             echo "Fetching Maven metadata from Artifactory..."
-                            curl -u "\$ART_USER:\$ART_PASS" -s "${metadataUrl}" -o metadata.xml
+                            curl -u "\$JFROG_USER:\$JFROG_PASS" -s "${metadataUrl}" -o metadata.xml
 
                             echo "Parsing metadata.xml for timestamp and build number..."
                             TIMESTAMP=\$(grep -oPm1 '(?<=<timestamp>)[^<]+' metadata.xml)
@@ -69,19 +69,19 @@ pipeline {
                             echo "WAR to download: \$WAR_NAME"
                             echo "Downloading from: \$ARTIFACT_URL"
 
-                            curl -u "\$ART_USER:\$ART_PASS" -o /tmp/\$WAR_NAME \$ARTIFACT_URL
+                            curl -u "\$JFROG_USER:\$JFROG_PASS" -o /tmp/\$WAR_NAME \$ARTIFACT_URL
 
                             echo "Stopping Tomcat..."
-                            sudo /usr/tomcat/tomcat11/bin/shutdown.sh || echo 'Tomcat may already be stopped'
+                            sudo /opt/tomcat/tomcat11/bin/shutdown.sh || echo 'Tomcat may already be stopped'
 
                             echo "Removing old WAR..."
-                            sudo rm -f /usr/tomcat/tomcat11/webapps/${artifactId}.war
+                            sudo rm -f /opt/tomcat/tomcat11/webapps/${artifactId}.war
 
                             echo "Deploying new WAR to Tomcat webapps..."
-                            sudo cp /tmp/\$WAR_NAME /usr/tomcat/tomcat11/webapps/${artifactId}.war
+                            sudo cp /tmp/\$WAR_NAME /opt/tomcat/tomcat11/webapps/${artifactId}.war
 
                             echo "Starting Tomcat..."
-                            sudo /usr/tomcat/tomcat11/bin/startup.sh || echo 'Tomcat startup might need manual check'
+                            sudo /opt/tomcat/tomcat11/bin/startup.sh || echo 'Tomcat startup might need manual check'
 
                             echo "Deployment completed successfully: \$WAR_NAME"
                         """
