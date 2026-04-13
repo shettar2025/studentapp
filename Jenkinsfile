@@ -1,93 +1,71 @@
 pipeline {
+    environment {
+        AWS_REGION = 'eu-north-1'
+        ACCOUNT_ID = '438987840260'
+        ECR_REPO = 'studentapp-repo'
+        ECR_URL = "438987840260.dkr.ecr.eu-north-1.amazonaws.com/studentapp-repo"
+        IMAGE_NAME = 'studentapp:latest'
+    }
+
     agent any
 
     stages {
-        stage ('Checkout') {
+
+        stage('Checkout') {
             steps {
-                checkout ([
+                checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
-                       url: 'https://github.com/shettar2025/studentapp.git',
-                       credentialsId: 'git-creds'
+                        url: 'https://github.com/shettar2025/studentapp.git',
+                        credentialsId: 'git-creds'
                     ]]
                 ])
             }
         }
 
-        stage ('Build') {
+        stage('Build') {
             steps {
                 sh 'mvn clean install'
             }
         }
 
-        stage  ('Test') {
+        stage('Test') {
             steps {
                 sh 'mvn test'
             }
         }
 
-       stage ('Deploy to Artifactory') {
+        stage('Build Docker Image') {
             steps {
-                configFileProvider([configFile(fileId: '3ec92838-88d3-46ff-a698-2c596f46fd54', variable: 'MAVEN_SETTINGS'
-                )]) {
-                    sh 'mvn deploy -s $MAVEN_SETTINGS'
-                }
+                sh 'docker build -t studentapp:latest .'
             }
         }
 
-     stage('Download Latest SNAPSHOT WAR and Deploy') {
+        stage('Login to ECR') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'jfrog-creds', 
-                    usernameVariable: 'JFROG_USER', 
-                    passwordVariable: 'JFROG_PASS'
-                )]) {
-                    script {
-                        def baseUrl = "http://13.48.147.62:8081/artifactory/libs-snapshot-local"
-                        def groupPath = "com/example/studentapp"
-                        def artifactId = "studentapp"
-                        def version = "1.2-SNAPSHOT"
-                        def metadataUrl = "${baseUrl}/${groupPath}/${version}/maven-metadata.xml"
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION | \
+                docker login --username AWS \
+                --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                '''
+            }
+        }
 
-                        sh """
-                            set -e
+        stage('Tag Docker Image') {
+            steps {
+                sh '''
+                docker tag studentapp:latest $ECR_URL:latest
+                '''
+            }
+        }
 
-                            echo "Fetching Maven metadata from Artifactory..."
-                            curl -u "\$JFROG_USER:\$JFROG_PASS" -s "${metadataUrl}" -o metadata.xml
-
-                            echo "Parsing metadata.xml for timestamp and build number..."
-                            TIMESTAMP=\$(grep -oPm1 '(?<=<timestamp>)[^<]+' metadata.xml)
-                            BUILDNUM=\$(grep -oPm1 '(?<=<buildNumber>)[^<]+' metadata.xml)
-
-                            echo "TIMESTAMP: \$TIMESTAMP"
-                            echo "BUILD NUMBER: \$BUILDNUM"
-
-                            WAR_NAME=${artifactId}-1.2-\${TIMESTAMP}-\${BUILDNUM}.war
-                            ARTIFACT_URL=${baseUrl}/${groupPath}/${version}/\$WAR_NAME
-
-                            echo "WAR to download: \$WAR_NAME"
-                            echo "Downloading from: \$ARTIFACT_URL"
-
-                            curl -u "\$JFROG_USER:\$JFROG_PASS" -o /tmp/\$WAR_NAME \$ARTIFACT_URL
-
-                            echo "Stopping Tomcat..."
-                            sudo /opt/tomcat/tomcat11/bin/shutdown.sh || echo 'Tomcat may already be stopped'
-
-                            echo "Removing old WAR..."
-                            rm -rf webapps/studentapp
-                            
-                            echo "Deploying new WAR to Tomcat webapps..."
-                            sudo cp /tmp/\$WAR_NAME /opt/tomcat/tomcat11/webapps/${artifactId}.war
-
-                            echo "Starting Tomcat..."
-                            sudo /opt/tomcat/tomcat11/bin/startup.sh || echo 'Tomcat startup might need manual check'
-
-                            echo "Deployment completed successfully: \$WAR_NAME"
-                        """
-                    }
-                }
+        stage('Push to ECR') {
+            steps {
+                sh '''
+                docker push $ECR_URL:latest
+                '''
             }
         }
     }
-} 
+}
