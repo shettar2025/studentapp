@@ -17,7 +17,7 @@ pipeline {
         stage('initialize ') {
             steps {
                 script {
-                    def config = constant()
+                    def config = constant(params.APP_NAME)
 
                     env.ACCOUNT_ID = config.ACCOUNT_ID
                     env.AWS_REGION = config.AWS_REGION
