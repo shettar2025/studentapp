@@ -1,4 +1,11 @@
 pipeline {
+     agent any
+    parameters {
+        string(name: 'AWS_REGION', defaultValue: 'eu-north-1', description: 'AWS Region')
+        string(name: 'ACCOUNT_ID', defaultValue: '', description: 'AWS Account ID')
+        string(name: 'ECR_REPO', defaultValue: 'studentapp-repo', description: 'ECR Repo Name')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker Image Tag')
+    }
     environment {
         AWS_REGION = 'eu-north-1'
         ACCOUNT_ID = '438987840260'
@@ -6,9 +13,6 @@ pipeline {
         ECR_URL = "438987840260.dkr.ecr.eu-north-1.amazonaws.com/studentapp-repo"
         IMAGE_NAME = 'studentapp:latest'
     }
-
-    agent any
-
     stages {
 
         stage('Checkout') {
@@ -38,7 +42,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t studentapp:latest .'
+                sh 'docker build -t IMAGE_NAME .'
             }
         }
 
@@ -61,7 +65,7 @@ pipeline {
         stage('Tag Docker Image') {
             steps {
                 sh '''
-                docker tag studentapp:latest $ECR_URL:latest
+                docker tag $IMAGE_NAME $ECR_URL:$IMAGE_TAG'
                ''' 
             }
         }
