@@ -1,19 +1,32 @@
+@Library('jenkins-shared-lib') _
+
 pipeline {
-     agent any
+    agent any
+
     parameters {
-        string(name: 'AWS_REGION', defaultValue: 'eu-north-1', description: 'AWS Region')
-        string(name: 'ACCOUNT_ID', defaultValue: '', description: 'AWS Account ID')
-        string(name: 'ECR_REPO', defaultValue: 'studentapp-repo', description: 'ECR Repo Name')
-        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker Image Tag')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest')
+        string(name: 'APP_NAME', defaultValue: 'studentapp')
     }
+
     environment {
-        AWS_REGION = 'eu-north-1'
-        ACCOUNT_ID = '438987840260'
-        ECR_REPO = 'studentapp-repo'
-        ECR_URL = "438987840260.dkr.ecr.eu-north-1.amazonaws.com/studentapp-repo"
-        IMAGE_NAME = 'studentapp:latest'
+        IMAGE_NAME = "${params.APP_NAME}"
     }
+
     stages {
+
+        stage('initialize ') {
+            steps {
+                script {
+                    def config = constant()
+
+                    env.ACCOUNT_ID = config.ACCOUNT_ID
+                    env.AWS_REGION = config.AWS_REGION
+                    env.ECR_REPO   = config.ECR_REPO
+                    env.ECR_URL    = config.ECR_URL
+                    env.GIT_URL    = config.GIT_URL
+                }
+            }
+        }
 
         stage('Checkout') {
             steps {
@@ -21,8 +34,8 @@ pipeline {
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/shettar2025/studentapp.git',
-                        credentialsId: 'git-creds'
+                        url: "${GIT_URL}",
+                        credentialsId: 'git-creds'  //stored in jenkins Credentials
                     ]]
                 ])
             }
@@ -34,47 +47,35 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t IMAGE_NAME .'
+                sh '''
+                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
             }
         }
 
-     stage('Login to ECR') {
-    steps {
-        withCredentials([[
-            $class: 'AmazonWebServicesCredentialsBinding',
-            credentialsId: 'aws-creds'
-        ]]) {
-            sh '''
-                aws sts get-caller-identity
-
-                aws ecr get-login-password --region $AWS_REGION | \
-                docker login --username AWS \
-                --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-            '''
-        }
-    }
-}
-        stage('Tag Docker Image') {
+        stage('Login to ECR') {
             steps {
-                sh '''
-                docker tag $IMAGE_NAME $ECR_URL:$IMAGE_TAG'
-               ''' 
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds' //stored in jenkins Credentials
+                ]]) {
+                    sh '''
+                    aws ecr get-login-password --region $AWS_REGION | \
+                    docker login --username AWS \
+                    --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                    '''
+                }
             }
         }
 
-        stage('Push to ECR') {
+        stage('Push Image') {
             steps {
                 sh '''
-                docker push $ECR_URL:latest
-              '''  
+                docker tag $IMAGE_NAME:$IMAGE_TAG $ECR_URL:$IMAGE_TAG
+                docker push $ECR_URL:$IMAGE_TAG
+                '''
             }
         }
     }
