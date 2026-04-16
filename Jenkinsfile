@@ -5,7 +5,6 @@ pipeline {
 
     parameters {
         string(name: 'IMAGE_TAG', defaultValue: 'latest')
-        string(name: 'APP_NAME', defaultValue: 'studentapp')
     }
 
     environment {
