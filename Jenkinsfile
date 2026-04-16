@@ -54,7 +54,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                docker build -t studentapp:$IMAGE_TAG .
                 '''
             }
         }
