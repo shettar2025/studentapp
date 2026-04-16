@@ -15,7 +15,7 @@ pipeline {
                     env.ECR_REPO   = config.ECR_REPO
                     env.ECR_URL    = config.ECR_URL
                     env.GIT_URL    = config.GIT_URL
-                  env.IMAGE_NAME = config.IMAGE_NAME
+                  //env.IMAGE_NAME = config.IMAGE_NAME
                 }
             }
         }
@@ -92,7 +92,7 @@ pipeline {
     post {
         always {
             sh 'docker logout || true'
-            sh "docker rmi $IMAGE_NAME:${env.IMAGE_TAG} || true"
+       //     sh "docker rmi $IMAGE_NAME:${env.IMAGE_TAG} || true"
         }
     }
 }
