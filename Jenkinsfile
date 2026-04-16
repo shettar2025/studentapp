@@ -76,7 +76,7 @@ pipeline {
  stage('Tag Docker Image') {
             steps {
                 sh '''
-                docker tag $IMAGE_NAME:$IMAGE_TAG \
+                docker tag studentapp:$IMAGE_TAG \
       $ECR_URL/$ECR_REPO:$IMAGE_TAG
                 '''
             }
