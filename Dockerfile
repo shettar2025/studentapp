@@ -1,5 +1,6 @@
 FROM tomcat:11.0.8
-RUN rm -rf /opt/tomcat/tomcat-11/webapps/*
+
+RUN rm -rf /usr/local/tomcat/webapps/*
 
 COPY target/StudentManagementApp-1.4-SNAPSHOT.war /usr/local/tomcat/webapps/ROOT.war
 
